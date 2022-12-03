@@ -1,5 +1,5 @@
 # Grass
-Very basic GPU instatiation of a mesh to a specified terrain paint texture layer for the terrain this script is placed on. - Graphics.DrawMeshInstancedIndirect
+GPU instatiate mesh to terrain paint texture layer for the terrain this script is placed on. - Graphics.DrawMeshInstancedIndirect
 
 
 # How To Use
