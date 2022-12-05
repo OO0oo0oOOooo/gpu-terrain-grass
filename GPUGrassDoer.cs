@@ -16,12 +16,16 @@ public class GPUGrassDoer : MonoBehaviour
     // [SerializeField] private Transform viewer;
     [SerializeField] private Mesh mesh;
     [SerializeField] private Material material;
+    [SerializeField] private Texture2D heightmap;
 
 
     [Header("Instancing Parameters")]
     [SerializeField] private int population = 10000;
     [SerializeField] private int layerIndex = 0;
     [SerializeField] private float meshYOffset = 0f;
+    [SerializeField] private Vector3 minSize = Vector3.one*0.2f;
+    // [SerializeField] private Vector3 maxSize = Vector3.one*2;
+    [SerializeField] private float heightScale = 2;
     [SerializeField] [Range(0,1)] private float grassThreshhold = 0.6f;
     [SerializeField] private float boundsY = 100f;
 
@@ -69,10 +73,13 @@ public class GPUGrassDoer : MonoBehaviour
     private struct MeshData
     {
         public Matrix4x4 mat;
+        public Color color;
 
         public static int Size()
         {
-            return sizeof(float) * 4 * 4;
+            return 
+                sizeof(float) * 4 * 4 +
+                sizeof(float) * 4;
         }
     }
 
@@ -131,7 +138,8 @@ public class GPUGrassDoer : MonoBehaviour
             MeshData mesh = new MeshData();
 
             Vector3 randomChunkPosition = chunk.RandomPosition(terrain);
-            Vector3Int alphamapCoord = ConvertToAlphamapCoordinates(worldspaceChunkPosition + randomChunkPosition);
+            Vector3Int alphamapCoord = ConvertToTextureCoordinates(worldspaceChunkPosition + randomChunkPosition, terrainData.alphamapWidth, terrainData.alphamapHeight);
+            Vector3Int heightmapCoord = ConvertToTextureCoordinates(worldspaceChunkPosition + randomChunkPosition, heightmap.width, heightmap.height);
 
             if (!ContainsIndex(maps, alphamapCoord.x, 1))
                 continue;
@@ -139,24 +147,30 @@ public class GPUGrassDoer : MonoBehaviour
             if (!ContainsIndex(maps, alphamapCoord.z, 0))
                 continue;
 
-            // I dont know why x and z have to be swapped but if it works its good enough for me
+            // I dont know why x and z have to be swapped
             float textureBlendWeight = maps[alphamapCoord.z, alphamapCoord.x, layerIndex];
+            Color noiseValue = heightmap.GetPixel(heightmapCoord.x, heightmapCoord.z, 0);
 
             // Culled meshes create unused space in the buffer, else{i-=1} can cause infinite loop
             if(textureBlendWeight >= grassThreshhold)
             {
+                Vector3 normal = terrainData.GetInterpolatedNormal((worldspaceChunkPosition.x + randomChunkPosition.x)/terrainData.size.x, (worldspaceChunkPosition.z + randomChunkPosition.z)/terrainData.size.z);
+                Vector3 xCross = Vector3.Cross(normal, Vector3.forward);
+                Vector3 zCross = Vector3.Cross(xCross, normal);
+
                 Vector3 position = randomChunkPosition + new Vector3(0, meshYOffset, 0);
-                Quaternion rotation = Quaternion.Euler(0, Random.Range(-180, 180), 0); // Use normal of terrain
-                Vector3 scale = new Vector3(1, 1 * textureBlendWeight, 1); // Use noise texture for height or do it in shader
+                Quaternion rotation = Quaternion.LookRotation(zCross, normal) * Quaternion.Euler(0, Random.Range(-180, 180), 0);
+                Vector3 scale = minSize + (Vector3.one * (noiseValue.r * heightScale)) * textureBlendWeight;
 
                 mesh.mat = Matrix4x4.TRS(position, rotation, scale);
+                mesh.color = noiseValue;
 
                 meshData[i] = mesh;
             }
         }
 
         chunk.argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
-        chunk.meshDataBuffer =  new ComputeBuffer(chunkPopulation, MeshData.Size());
+        chunk.meshDataBuffer = new ComputeBuffer(chunkPopulation, MeshData.Size());
 
         chunk.argsBuffer.SetData(args);
         chunk.meshDataBuffer.SetData(meshData);
@@ -178,15 +192,15 @@ public class GPUGrassDoer : MonoBehaviour
         }
     }
 
-    private Vector3Int ConvertToAlphamapCoordinates(Vector3 worldPosition)
+    private Vector3Int ConvertToTextureCoordinates(Vector3 worldPosition, int textureWidth, int textureHeight)
     {
         Vector3 relativePosition = worldPosition - transform.position;
 
         return new Vector3Int
         (
-            Mathf.RoundToInt((relativePosition.x / terrainData.size.x) * terrainData.alphamapWidth),
+            Mathf.RoundToInt((relativePosition.x / terrainData.size.x) * textureWidth),
             0,
-            Mathf.RoundToInt((relativePosition.z / terrainData.size.z) * terrainData.alphamapHeight)
+            Mathf.RoundToInt((relativePosition.z / terrainData.size.z) * textureHeight)
         );
     }
 
