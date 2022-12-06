@@ -3,13 +3,16 @@ Shader "Custom/GPUInstancedGrass" {
     {
         _ColorTop ("Top Color", Color) = (1,1,1,1)
         _ColorBottom ("Bottom Color", Color) = (1,1,1,1)
-        _AmbiantColor("Ambiant Color", Color) = (0.2,0.2,1,1)
+        // _AmbiantColor("Ambiant Color", Color) = (0.2, 0.2, 0.65, 1)
+        _HeightColor1("Height Top Color", Color) = (0.03, 0.73, 0.13, 1)
+        _HeightColor2("Height Bottom Color", Color) = (0.03, 0.73, 0.13, 1)
 
-        _ColorStart ("Color Start", Range(-2, 2)) = 0
-        _ColorEnd ("Color End", Range(-2, 2)) = 1
+        // _AmbientStart ("Ambiant Color Start", Range(0, 1)) = 0
+        _ColorStart ("Color Start", Range(0, 1)) = 0
+        _ColorEnd ("Color End", Range(0, 1)) = 1
 
-        // _ColorSmall ("_ColorSmall", color) = (0,0,0,1)
-        // _ColorBig ("_ColorBig", color) = (1,1,1,1)
+        _Mask ("Mask", 2D) = "white" {}
+        _AlphaClip ("Alpha Clip", Range(0, 1)) = 0.5
     }
     SubShader {
         Tags { "RenderType" = "Opaque" }
@@ -49,13 +52,15 @@ Shader "Custom/GPUInstancedGrass" {
             fixed4 _ColorTop;
             fixed4 _ColorBottom;
             fixed4 _AmbiantColor;
+            fixed4 _HeightColor1;
+            fixed4 _HeightColor2;
 
-
+            float _AmbientStart;
             float _ColorStart;
             float _ColorEnd;
+            float _AlphaClip;
 
-            // fixed4 _ColorSmall;
-            // fixed4 _ColorBig;
+            sampler2D _Mask;
 
             StructuredBuffer<MeshData> _Properties;
 
@@ -64,30 +69,26 @@ Shader "Custom/GPUInstancedGrass" {
 
                 float4 pos = mul(_Properties[instanceID].mat, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-
+                
                 o.color = _Properties[instanceID].color;
-                // o.color = i.color;
-
                 o.uv = i.uv;
 
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target {
+                // float t2 = saturate(InverseLerp(_ColorStart, _ColorEnd, i.uv.y));
+                float t = smoothstep(_ColorStart, _ColorEnd, i.uv.y);
 
-                float t = InverseLerp(_ColorStart, _ColorEnd, i.uv.y);
-                float t1 = smoothstep(_ColorStart, _ColorEnd, i.uv.y);
+                float4 col1 = lerp(_ColorBottom, _ColorTop, t);
+                float4 col2 = lerp(_HeightColor2, _HeightColor1, t);
+                
+                float4 clr = lerp(col1, col2, i.color.x);
 
-                float4 col = lerp(_ColorBottom, _ColorTop, t);
-                float4 col1 = lerp(_AmbiantColor, col, i.color.x);
+                float mask = tex2D(_Mask, i.uv);
+                clip(mask - _AlphaClip);
 
-                float4 col2 = col * col1;
-
-                float4 colo = lerp(0.1, 1, i.color.x);
-
-                // col = col * i.color;
-
-                return col1 * colo;
+                return clr * mask;
             }
 
             ENDCG

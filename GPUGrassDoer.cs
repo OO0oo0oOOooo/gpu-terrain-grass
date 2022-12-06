@@ -129,8 +129,8 @@ public class GPUGrassDoer : MonoBehaviour
         center.z = (-(halfChunkZ * chunksInZ) + chunkSize.y * zOffset) + halfChunkZ;
         center.y = 0;
 
-        Vector3 worldspaceChunkPosition = terrainOffset + center;
-        chunk.bounds = new Bounds(worldspaceChunkPosition, new Vector3(chunkSize.x, boundsY, chunkSize.y));
+        Vector3 worldspacePosition = terrainOffset + center;
+        chunk.bounds = new Bounds(worldspacePosition, new Vector3(chunkSize.x, boundsY, chunkSize.y));
 
         MeshData[] meshData = new MeshData[chunkPopulation];
         for (int i = 0; i < chunkPopulation; i++) 
@@ -138,8 +138,10 @@ public class GPUGrassDoer : MonoBehaviour
             MeshData mesh = new MeshData();
 
             Vector3 randomChunkPosition = chunk.RandomPosition(terrain);
-            Vector3Int alphamapCoord = ConvertToTextureCoordinates(worldspaceChunkPosition + randomChunkPosition, terrainData.alphamapWidth, terrainData.alphamapHeight);
-            Vector3Int heightmapCoord = ConvertToTextureCoordinates(worldspaceChunkPosition + randomChunkPosition, heightmap.width, heightmap.height);
+            Vector3 relativePosition = worldspacePosition + randomChunkPosition - transform.position;
+
+            Vector3Int alphamapCoord = ConvertToTextureCoordinates(relativePosition, terrainData.alphamapWidth, terrainData.alphamapHeight);
+            Vector3Int heightmapCoord = ConvertToTextureCoordinates(relativePosition, heightmap.width, heightmap.height);
 
             if (!ContainsIndex(maps, alphamapCoord.x, 1))
                 continue;
@@ -154,7 +156,7 @@ public class GPUGrassDoer : MonoBehaviour
             // Culled meshes create unused space in the buffer, else{i-=1} can cause infinite loop
             if(textureBlendWeight >= grassThreshhold)
             {
-                Vector3 normal = terrainData.GetInterpolatedNormal((worldspaceChunkPosition.x + randomChunkPosition.x)/terrainData.size.x, (worldspaceChunkPosition.z + randomChunkPosition.z)/terrainData.size.z);
+                Vector3 normal = terrainData.GetInterpolatedNormal(relativePosition.x/terrainData.size.x, relativePosition.z/terrainData.size.z);
                 Vector3 xCross = Vector3.Cross(normal, Vector3.forward);
                 Vector3 zCross = Vector3.Cross(xCross, normal);
 
@@ -183,6 +185,9 @@ public class GPUGrassDoer : MonoBehaviour
 
     void Update()
     {
+        if(Camera.main == null)
+            return;
+        
         for (int i = 0; i < chunkCount; i++)
         {
             float dist = Vector3.Distance(Camera.main.transform.position, chunks[i].bounds.center);
@@ -192,15 +197,13 @@ public class GPUGrassDoer : MonoBehaviour
         }
     }
 
-    private Vector3Int ConvertToTextureCoordinates(Vector3 worldPosition, int textureWidth, int textureHeight)
+    private Vector3Int ConvertToTextureCoordinates(Vector3 relPosition, int textureWidth, int textureHeight)
     {
-        Vector3 relativePosition = worldPosition - transform.position;
-
         return new Vector3Int
         (
-            Mathf.RoundToInt((relativePosition.x / terrainData.size.x) * textureWidth),
+            Mathf.RoundToInt((relPosition.x / terrainData.size.x) * textureWidth),
             0,
-            Mathf.RoundToInt((relativePosition.z / terrainData.size.z) * textureHeight)
+            Mathf.RoundToInt((relPosition.z / terrainData.size.z) * textureHeight)
         );
     }
 
