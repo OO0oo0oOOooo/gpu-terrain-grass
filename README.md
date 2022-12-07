@@ -7,3 +7,8 @@ GPU instatiate mesh to terrain paint texture layer for the terrain this script i
 * Create a material and set the shader to the one provided.
 * Set the mesh of the object you want instatiated.
 * Set layerIndex to terrain paint layer index you want the grass to be instatiated on.
+
+#
+* Heightmap controls scale and color
+* set color gradients for the grass in the main material
+*
