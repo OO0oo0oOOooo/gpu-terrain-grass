@@ -69,7 +69,7 @@ Shader "Custom/GPUInstancedGrass" {
 
                 float4 pos = mul(_Properties[instanceID].mat, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-                
+
                 o.color = _Properties[instanceID].color;
                 o.uv = i.uv;
 

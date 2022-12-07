@@ -13,7 +13,6 @@ public class GPUGrassDoer : MonoBehaviour
 
 
     [Header("Parameters")]
-    // [SerializeField] private Transform viewer;
     [SerializeField] private Mesh mesh;
     [SerializeField] private Material material;
     [SerializeField] private Texture2D heightmap;
@@ -162,7 +161,7 @@ public class GPUGrassDoer : MonoBehaviour
 
                 Vector3 position = randomChunkPosition + new Vector3(0, meshYOffset, 0);
                 Quaternion rotation = Quaternion.LookRotation(zCross, normal) * Quaternion.Euler(0, Random.Range(-180, 180), 0);
-                Vector3 scale = minSize + (Vector3.one * (noiseValue.r * heightScale)) * textureBlendWeight;
+                Vector3 scale = minSize + Vector3.one * (noiseValue.r * heightScale) * textureBlendWeight;
 
                 mesh.mat = Matrix4x4.TRS(position, rotation, scale);
                 mesh.color = noiseValue;
