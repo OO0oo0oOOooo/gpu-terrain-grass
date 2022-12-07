@@ -10,5 +10,4 @@ GPU instatiate mesh to terrain paint texture layer for the terrain this script i
 
 #
 * Heightmap controls scale and color
-* set color gradients for the grass in the main material
-*
+* change grass gradients in the main material
