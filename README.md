@@ -1,3 +1,5 @@
+# This is being replaced by greenthumb
+
 # Grass
 GPU instatiate mesh to terrain paint texture layer for the terrain this script is placed on. - Graphics.DrawMeshInstancedIndirect
 
